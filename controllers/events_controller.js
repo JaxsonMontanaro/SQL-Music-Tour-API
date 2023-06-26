@@ -1,63 +1,109 @@
 // DEPENDENCIES
 const events = require('express').Router()
 const db = require('../models')
-const { event } = db
+const { Event, MeetGreet, SetTime, Band, Stage, StageEvent } = db
 const { Op } = require('sequelize')
 
-// ENDPOINTS
+// FIND ALL EVENTS
 events.get('/', async (req, res) => {
     try {
-        const foundevents = await event.findAll({
-            order: [['available_start_time', 'ASC']],
-            where: { name: { [Op.like]: `%${req.query.name ? req.query.name : ''}%` } }
+        const foundEvents = await Event.findAll({
+            order: [ [ 'date', 'ASC' ] ],
+            where: {
+                name: { [Op.like]: `%${req.query.name ? req.query.name : ''}%` }
+            }
         })
-        res.status(200).json(foundevents)
-    } catch (err) {
-        console.log(err)
-        res.status(500).send('ERROR GETTING ALL EVENTS')
+        res.status(200).json(foundEvents)
+    } catch (error) {
+        console.log(error)
+        res.status(500).json(error)
     }
 })
 
-events.get('/:id', async (req, res) => {
+// FIND A SPECIFIC EVENT
+events.get('/:name', async (req, res) => {
     try {
-        const foundevent = await event.findOne({ where: { event_id: req.params.id } })
-        res.status(200).json(foundevent)
-    } catch (err) {
-        console.log(err)
-        res.status(500).send('ERROR GETTING ONE EVENT')
+        const foundEvent = await Event.findOne({
+            where: { name: req.params.name },
+            include: [
+                {
+                    model: MeetGreet,
+                    as: 'meet_greets',
+                    include: {
+                        model: Band,
+                        as: 'band'
+                    }
+                },
+                {
+                    model: SetTime,
+                    as: 'set_times',
+                    include: [
+                        {
+                            model: Band,
+                            as: 'band'
+                        },
+                        {
+                            model: Stage,
+                            as: 'stage'
+                        }
+                    ]
+                },
+                {
+                    model: Stage,
+                    as: 'stages',
+                    through:  { attributes: [] }
+                }
+            ]
+        })
+        res.status(200).json(foundEvent)
+    } catch (error) {
+        console.log(error)
+        res.status(500).json(error)
     }
 })
 
+// CREATE AN EVENT
 events.post('/', async (req, res) => {
     try {
-        const newevent = await event.create(req.body)
-        res.status(200).json({ message: "Created a new event!", data: newevent })
-    } catch (err) {
-        console.log(err)
-        res.status(500).send('ERROR CREATING EVENTS')
+        const newEvent = await Event.create(req.body)
+        res.status(200).json({
+            message: 'Successfully inserted a new event',
+            data: newEvent
+        })
+    } catch(err) {
+        res.status(500).json(err)
     }
 })
 
+// UPDATE AN EVENT
 events.put('/:id', async (req, res) => {
     try {
-        const updatedevents = await event.update(
-            req.body,
-            { where: { event_id: req.params.id } }
-        )
-        res.status(200).json({ message: `Updated ${updatedevents} events!` })
-    } catch (err) {
-        console.log(err)
-        res.status(500).send('ERROR UPDATING EVENTS')
+        const updatedEvents = await Event.update(req.body, {
+            where: {
+                event_id: req.params.id
+            }
+        })
+        res.status(200).json({
+            message: `Successfully updated ${updatedEvents} event(s)`
+        })
+    } catch(err) {
+        res.status(500).json(err)
     }
 })
 
+// DELETE AN EVENT
 events.delete('/:id', async (req, res) => {
     try {
-        const deletedevent = await event.destroy({ where: { event_id: req.params.id } })
-        res.status(200).json({ message: `Successfully deleted event id ${req.params.id}!` })
-    } catch (err) {
-        console.log(err)
-        res.status(500).send('ERROR DELETING EVENTS')
+        const deletedEvents = await Event.destroy({
+            where: {
+                event_id: req.params.id
+            }
+        })
+        res.status(200).json({
+            message: `Successfully deleted ${deletedEvents} event(s)`
+        })
+    } catch(err) {
+        res.status(500).json(err)
     }
 })
 
